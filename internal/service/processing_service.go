@@ -10,37 +10,60 @@ import (
 
 type MessageQueue interface {
 	PublishProcessingJob(ctx context.Context, job *models.ProcessingJob) error
+	ConsumeProcessingResults(ctx context.Context) (<-chan amqp.Delivery, error)
 }
-type RabbitMQPublisher struct {
-	channel *amqp.Channel
-	queue   string
+type RabbitMQ struct {
+	channel     *amqp.Channel
+	jobQueue    string
+	resultQueue string
 }
 
-func NewRabbitMQPublisher(conn *amqp.Connection, queue string) (*RabbitMQPublisher, error) {
+func NewRabbitMQ(conn *amqp.Connection, jobQueue, resultQueue string) (*RabbitMQ, error) {
 	ch, err := conn.Channel()
 	if err != nil {
 		return nil, err
 	}
-	_, err = ch.QueueDeclare(queue, true, false, false, false, nil)
+	_, err = ch.QueueDeclare(jobQueue, true, false, false, false, nil)
 	if err != nil {
-		ch.Close()
 		return nil, err
 	}
-	return &RabbitMQPublisher{
-		channel: ch,
-		queue:   queue,
+
+	_, err = ch.QueueDeclare(resultQueue, true, false, false, false, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return &RabbitMQ{
+		channel:     ch,
+		jobQueue:    jobQueue,
+		resultQueue: resultQueue,
 	}, nil
 }
 
-func (p *RabbitMQPublisher) PublishProcessingJob(ctx context.Context, job *models.ProcessingJob) error {
+func (r *RabbitMQ) PublishProcessingJob(ctx context.Context, job *models.ProcessingJob) error {
 	body, err := json.Marshal(job)
 	if err != nil {
 		return err
 	}
 
-	return p.channel.Publish("", p.queue, false, false,
-		amqp.Publishing{
-			ContentType: "application/json",
-			Body:        body,
-		})
+	return r.channel.Publish("", r.jobQueue, false, false, amqp.Publishing{
+		ContentType: "application/json",
+		Body:        body,
+	})
+}
+
+func (r *RabbitMQ) ConsumeProcessingResults(ctx context.Context) (<-chan amqp.Delivery, error) {
+	msgs, err := r.channel.Consume(
+		r.resultQueue, // listening to this queue
+		"",            // consumer tag
+		true,          // auto-ack
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return msgs, nil
 }
