@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log/slog"
 	"mime/multipart"
 	"path/filepath"
 	"strings"
@@ -39,7 +41,15 @@ func (s *ImageService) UploadImage(ctx context.Context, file multipart.File, hea
 
 	fName := strings.ToLower(header.Filename)
 	ext := filepath.Ext(fName)
-	if !s.cfg.IsSupportedFormat(ext) {
+	isSupported := false
+	for _, supported := range s.cfg.GCS.SupportedFormats {
+		if ext == supported {
+			isSupported = true
+			break
+		}
+	}
+
+	if !isSupported {
 		return nil, fmt.Errorf("unsupported file format: %s", ext)
 	}
 
@@ -85,12 +95,9 @@ func (s *ImageService) UploadImage(ctx context.Context, file multipart.File, hea
 
 	// Publish to message queue for processing
 	pj := &models.ProcessingJob{
-		ImageID:           image.ID,
-		OriginalGCSPath:   image.OriginalGCSPath,
-		FileType:          ext,
-		DestinationBucket: s.cfg.GCS.DZIBucket,
-		ThumbnailSize:     s.cfg.Processing.ThumbnailSize,
-		DZITileSize:       s.cfg.Processing.DZITileSize,
+		ImageID:         image.ID,
+		OriginalGCSPath: image.OriginalGCSPath,
+		FileType:        ext,
 	}
 
 	if err := s.mq.PublishProcessingJob(ctx, pj); err != nil {
@@ -194,4 +201,77 @@ func (s *ImageService) ListImages(ctx context.Context, filter *models.ImageFilte
 		return nil, fmt.Errorf("failed to list images: %w", err)
 	}
 	return images, nil
+}
+
+func (s *ImageService) handleProcessingResult(ctx context.Context, result *models.ProcessingResultJob) error {
+
+	image, err := s.repo.Read(ctx, result.ImageID)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve image record for processing result: %w", err)
+	}
+
+	if result.Status == models.ProcessingStatusProcessing {
+		if result.GCSThumbnailPath != "" {
+			image.ThumbnailGCSPath = result.GCSThumbnailPath
+			image.Width = result.Width
+			image.Height = result.Height
+		}
+		if result.GCSDZIPath != "" {
+			image.DZIGCSPath = result.GCSDZIPath
+		}
+		if result.GCSTilePath != "" {
+			image.TilesGCSPath = result.GCSTilePath
+		}
+
+	}
+	image.ProcessingStatus = result.Status
+	image.UpdatedAt = time.Now()
+	if err := s.repo.Update(ctx, image); err != nil {
+		return fmt.Errorf("failed to update image processing status: %w", err)
+	}
+	if result.Status == models.ProcessingStatusFailed {
+		return fmt.Errorf("image processing failed: %s", result.ErrorMessage)
+	}
+
+	return nil
+}
+
+func (s *ImageService) StartProcessingResultSubscriber(ctx context.Context) error {
+	msgs, err := s.mq.ConsumeProcessingResults(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to start processing result subscriber: %w", err)
+	}
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				slog.Info("Shutting down processing result subscriber")
+				return
+
+			case d, ok := <-msgs:
+				if !ok {
+					slog.Warn("Processing result channel closed unexpectedly")
+					return
+				}
+
+				var result models.ProcessingResultJob
+				if err := json.Unmarshal(d.Body, &result); err != nil {
+					slog.Error("Failed to unmarshal processing result",
+						slog.String("body", string(d.Body)),
+						slog.Any("error", err),
+					)
+					continue
+				}
+
+				slog.Info("Received processing result message",
+					slog.String("image_id", result.ImageID),
+					slog.String("status", result.Status),
+				)
+
+				s.handleProcessingResult(ctx, &result)
+			}
+		}
+	}()
+	return nil
 }
