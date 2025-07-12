@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -8,69 +9,77 @@ import (
 )
 
 type Config struct {
-	Server     ServerConfig
-	Firebase   FirebaseConfig
-	GCS        GCSConfig
-	Processing ProcessingConfig
+	Server ServerConfig
+	GCS    GCSConfig
+	IPS    IPSConfig
 }
 
 type GCSConfig struct {
-	ProjectID         string
-	OriginalBucket    string //Cold storage bucket for original images
-	DZIBucket         string //Hot storage bucket for DZI files
-	ServiceAccountKey string //Path to the service account key file
-}
-
-type ProcessingConfig struct {
-	MaxFileSize      int64
-	SupportedFormats []string
-	ThumbnailSize    int
-	DZITileSize      int
-}
-
-type FirebaseConfig struct {
-	ProjectID         string
-	ServiceAccountKey string
+	OriginalBucket   string   //Cold storage bucket for original images
+	SupportedFormats []string //Supported image formats
+	MaxFileSize      int64    //Maximum file size for uploads
+	BucketLocation   string   //Location of the GCS bucket
+	StorageClass     string   //Storage class for the GCS bucket
 }
 
 type ServerConfig struct {
-	Port         string
+	PROJECT_ID   string
+	Port         int
 	Environment  string
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
+	IdleTimeout  time.Duration
+}
+
+type IPSConfig struct { // Image Processing Server Config
+	Host     string
+	Port     int
+	Username string
+	Password string
 }
 
 func LoadConfig() (*Config, error) {
-	readTimeout, _ := time.ParseDuration(getEnvOrDefault("READ_TIMEOUT", "30s"))
-	writeTimeout, _ := time.ParseDuration(getEnvOrDefault("WRITE_TIMEOUT", "30s"))
 
-	maxFileSize, _ := strconv.ParseInt(getEnvOrDefault("MAX_FILE_SIZE", "104857600"), 10, 64) // 100MB
-	thumbnailSize, _ := strconv.Atoi(getEnvOrDefault("THUMBNAIL_SIZE", "256"))
-	dziTileSize, _ := strconv.Atoi(getEnvOrDefault("DZI_TILE_SIZE", "256"))
+	env_location := os.Getenv("ENV_LOCATION")
+	if env_location == "LOCAL" {
+		//look at credential file
+		gac_path := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
+		if gac_path == "" {
+			return nil, fmt.Errorf("GOOGLE_APPLICATION_CREDENTIALS environment variable is not set")
+		}
+		if _, err := os.Stat(gac_path); os.IsNotExist(err) {
+			return nil, fmt.Errorf("GOOGLE_APPLICATION_CREDENTIALS file does not exist at path: %s", gac_path)
+		}
+		os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", gac_path)
+	}
 
-	supportedFormats := strings.Split(getEnvOrDefault("SUPPORTED_FORMATS", "jpg,jpeg,png,tiff,tif,svs,ndpi,mrxs"), ",")
+	// Parser Timeouts from environment variables or set defaults
+	readTimeout, _ := time.ParseDuration(getEnvOrDefault("READ_TIMEOUT", "15m"))
+	writeTimeout, _ := time.ParseDuration(getEnvOrDefault("WRITE_TIMEOUT", "60s"))
+	idleTimeout, _ := time.ParseDuration(getEnvOrDefault("IDLE_TIMEOUT", "5m"))
 
 	return &Config{
 		Server: ServerConfig{
-			Port:         getEnvOrDefault("SERVER_PORT", "8080"),
+			Port:         int(getEnvAsInt("PORT", 8080)),
 			Environment:  getEnvOrDefault("ENV", "development"),
 			ReadTimeout:  readTimeout,
 			WriteTimeout: writeTimeout,
-		},
-		Firebase: FirebaseConfig{
-			ProjectID:         os.Getenv("FIREBASE_PROJECT_ID"),
-			ServiceAccountKey: os.Getenv("FIREBASE_SERVICE_ACCOUNT_KEY"),
+			IdleTimeout:  idleTimeout,
+			PROJECT_ID:   getEnvOrDefault("PROJECT_ID", "your-project-id"),
 		},
 		GCS: GCSConfig{
-			ProjectID:         os.Getenv("GCS_PROJECT_ID"),
-			OriginalBucket:    os.Getenv("GCS_ORIGINAL_BUCKET"),
-			ServiceAccountKey: os.Getenv("GCS_SERVICE_ACCOUNT_KEY"),
+			OriginalBucket:   os.Getenv("GCS_ORIGINAL_BUCKET"),
+			SupportedFormats: strings.Split(getEnvOrDefault("SUPPORTED_FORMATS", "jpg,jpeg,png,tiff,tif,svs,ndpi,mrxs"), ","),
+			MaxFileSize:      getEnvAsInt("MAX_FILE_SIZE", 5368709120), // 5GB default
+			BucketLocation:   getEnvOrDefault("GCS_BUCKET_LOCATION", "US"),
+			StorageClass:     getEnvOrDefault("GCS_STORAGE_CLASS", "COLDLINE"), // Default to COLDLINE
+
 		},
-		Processing: ProcessingConfig{
-			MaxFileSize:      maxFileSize,
-			SupportedFormats: supportedFormats,
-			ThumbnailSize:    thumbnailSize,
-			DZITileSize:      dziTileSize,
+		IPS: IPSConfig{
+			Host:     getEnvOrDefault("IPS_HOST", "localhost"),
+			Port:     int(getEnvAsInt("IPS_PORT", 8081)),
+			Username: getEnvOrDefault("IPS_USERNAME", "admin"),
+			Password: getEnvOrDefault("IPS_PASSWORD", "admin"),
 		},
 	}, nil
 }
@@ -82,11 +91,15 @@ func getEnvOrDefault(key, defaultValue string) string {
 	return defaultValue
 }
 
-func (c *Config) IsSupportedFormat(ext string) bool {
-	for _, supported := range c.Processing.SupportedFormats {
-		if ext == supported {
-			return true
-		}
+func getEnvAsInt(key string, defaultValue int64) int64 {
+	valueStr := os.Getenv(key)
+	if valueStr == "" {
+		return defaultValue
 	}
-	return false
+	value, err := strconv.ParseInt(valueStr, 10, 64)
+	if err != nil {
+		fmt.Printf("Error parsing environment variable %s: %v. Using default value: %d\n", key, err, defaultValue)
+		return defaultValue
+	}
+	return value
 }
