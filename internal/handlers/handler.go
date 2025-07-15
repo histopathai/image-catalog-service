@@ -18,64 +18,6 @@ func NewImageHandler(imgService *service.ImageService) *ImageHandler {
 	}
 }
 
-// UploadImage Hadnlers image uploads
-func (h *ImageHandler) UploadImage(c *gin.Context) {
-	userID := c.GetHeader("X-User-ID")     // Get user ID from Auth-Service
-	userRole := c.GetHeader("X-User-Role") // Get user role from Auth-Service
-
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "user_id_missing", "message": "User ID not found in request headers."})
-		return
-	}
-
-	if userRole != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden", "message": "You do not have permission to perform this action."})
-		return
-	}
-
-	file, header, err := c.Request.FormFile("file")
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "file_upload_error", "message": "Failed to upload file."})
-		return
-	}
-
-	var diseaseType *string
-	if dt := c.PostForm("disease_type"); dt != "" {
-		diseaseType = &dt
-	}
-	var classification *string
-	if cl := c.PostForm("classification"); cl != "" {
-		classification = &cl
-	}
-	var subtype *string
-	if st := c.PostForm("subtype"); st != "" {
-		subtype = &st
-	}
-
-	var grade *string
-	if gr := c.PostForm("grade"); gr != "" {
-		grade = &gr
-	}
-
-	request := &models.ImageUploadRequest{
-		DatasetName:    c.PostForm("dataset_name"),
-		OrganType:      c.PostForm("organ_type"),
-		OriginalUID:    c.PostForm("original_uid"),
-		DiseaseType:    diseaseType,
-		Classification: classification,
-		Subtype:        subtype,
-		Grade:          grade,
-	}
-
-	image, err := h.imageService.UploadImage(c.Request.Context(), file, header, request)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "image_upload_error", "message": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "Image uploaded successfully", "image": image})
-}
-
 // GetImageByID retrieves an image by its ID.
 func (h *ImageHandler) GetImageByID(c *gin.Context) {
 	imageId := c.Param("image_id")
@@ -155,12 +97,12 @@ func (h *ImageHandler) GetImages(c *gin.Context) {
 	grade := c.Query("grade")
 
 	filter := &models.ImageFilter{
-		DatasetName:    datasetName,
-		OrganType:      organType,
-		DiseaseType:    diseaseType,
-		Classification: classification,
-		Subtype:        subtype,
-		Grade:          grade,
+		DatasetName:    &datasetName,
+		OrganType:      &organType,
+		DiseaseType:    &diseaseType,
+		Classification: &classification,
+		SubType:        &subtype,
+		Grade:          &grade,
 	}
 
 	images, err := h.imageService.ListImages(c.Request.Context(), filter)
