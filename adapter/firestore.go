@@ -20,14 +20,6 @@ func NewFirestoreCollection(client *firestore.Client, collectionName string) (*F
 	}, nil
 }
 
-func (r *FirestoreImageRepository) Create(ctx context.Context, image *models.Image) error {
-	_, err := r.collection.Doc(image.ID).Set(ctx, image)
-	if err != nil {
-		return fmt.Errorf("failed to create image: %w", err)
-	}
-	return nil
-}
-
 func (r *FirestoreImageRepository) Read(ctx context.Context, imageID string) (*models.Image, error) {
 	doc, err := r.collection.Doc(imageID).Get(ctx)
 	if err != nil {
@@ -92,23 +84,23 @@ func (r *FirestoreImageRepository) Delete(ctx context.Context, imageID string) e
 func (r *FirestoreImageRepository) Filter(ctx context.Context, filter *models.ImageFilter) ([]*models.Image, error) {
 	query := r.collection.Query
 
-	if filter.DatasetName != "" {
-		query = query.Where("dataset_name", "==", filter.DatasetName)
+	if filter.DatasetName != nil && *filter.DatasetName != "" {
+		query = query.Where("dataset_name", "==", *filter.DatasetName)
 	}
-	if filter.OrganType != "" {
-		query = query.Where("organ_type", "==", filter.OrganType)
+	if filter.OrganType != nil && *filter.OrganType != "" {
+		query = query.Where("organ_type", "==", *filter.OrganType)
 	}
-	if filter.DiseaseType != "" {
-		query = query.Where("disease_type", "==", filter.DiseaseType)
+	if filter.DiseaseType != nil && *filter.DiseaseType != "" {
+		query = query.Where("disease_type", "==", *filter.DiseaseType)
 	}
-	if filter.Classification != "" {
-		query = query.Where("classification", "==", filter.Classification)
+	if filter.Classification != nil && *filter.Classification != "" {
+		query = query.Where("classification", "==", *filter.Classification)
 	}
-	if filter.Subtype != "" {
-		query = query.Where("subtype", "==", filter.Subtype)
+	if filter.SubType != nil && *filter.SubType != "" {
+		query = query.Where("subtype", "==", *filter.SubType)
 	}
-	if filter.Grade != "" {
-		query = query.Where("grade", "==", filter.Grade)
+	if filter.Grade != nil && *filter.Grade != "" {
+		query = query.Where("grade", "==", *filter.Grade)
 	}
 
 	docs, err := query.Documents(ctx).GetAll()
