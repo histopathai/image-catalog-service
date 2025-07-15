@@ -6,9 +6,9 @@ toolchain go1.23.11
 
 require (
 	cloud.google.com/go/firestore v1.18.0
+	firebase.google.com/go v3.13.0+incompatible
 	github.com/gin-gonic/gin v1.10.1
-	github.com/google/uuid v1.6.0
-	github.com/streadway/amqp v1.1.0
+	github.com/joho/godotenv v1.5.1
 )
 
 require (
@@ -42,7 +42,9 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.20.0 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.6 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.2 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -75,6 +77,7 @@ require (
 	golang.org/x/text v0.25.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
 	google.golang.org/api v0.235.0 // indirect
+	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto v0.0.0-20250505200425-f936aa4a68b2 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250512202823-5a2f75b736a9 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250512202823-5a2f75b736a9 // indirect
