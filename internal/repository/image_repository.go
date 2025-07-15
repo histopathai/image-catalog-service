@@ -7,7 +7,6 @@ import (
 )
 
 type ImageRepository interface {
-	Create(ctx context.Context, image *models.Image) error
 	Read(ctx context.Context, imageID string) (*models.Image, error)
 	Update(ctx context.Context, image *models.Image) error
 	Delete(ctx context.Context, imageID string) error
