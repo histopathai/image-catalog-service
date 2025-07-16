@@ -6,10 +6,9 @@ import (
 
 type Image struct {
 	ID             string  `json:"id" firestore:"id"`
-	OriginalName   string  `json:"original_name" firestore:"original_name"`
-	OriginalUID    string  `json:"original_uid" firestore:"original_uid"`
+	FileName       string  `json:"file_name" firestore:"file_name"`
+	FileUID        string  `json:"file_uid" firestore:"file_uid"`
 	DatasetName    string  `json:"dataset_name" firestore:"dataset_name"`
-	ImageType      string  `json:"image_type" firestore:"image_type"` // e.g., ".svs", ".tif"
 	OrganType      string  `json:"organ_type" firestore:"organ_type"`
 	DiseaseType    *string `json:"disease_type,omitempty" firestore:"disease_type,omitempty"`
 	Classification *string `json:"classification,omitempty" firestore:"classification,omitempty"`
@@ -21,9 +20,10 @@ type Image struct {
 	ThumbnailGCSPath string `json:"thumbnail_gcs_path" firestore:"thumbnail_gcs_path"`
 
 	// Metadata
-	Width    int   `json:"width" firestore:"width"`
-	Height   int   `json:"height" firestore:"height"`
-	FileSize int64 `json:"file_size" firestore:"file_size"`
+	Width  int    `json:"width" firestore:"width"`
+	Height int    `json:"height" firestore:"height"`
+	Size   int64  `json:"size" firestore:"size"`
+	Format string `json:"format"`
 
 	// Timestamps
 	CreatedAt time.Time `json:"created_at" firestore:"created_at"`
