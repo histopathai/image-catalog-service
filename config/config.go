@@ -23,6 +23,7 @@ type ServerConfig struct {
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
 	IdleTimeout  time.Duration
+	GINMode      string // Added GIN_MODE for Gin framework configuration
 }
 
 func LoadConfig() (*Config, error) {
@@ -68,6 +69,7 @@ func LoadConfig() (*Config, error) {
 			ReadTimeout:  readTimeout,
 			WriteTimeout: writeTimeout,
 			IdleTimeout:  idleTimeout,
+			GINMode:      getEnvOrDefault("GIN_MODE", "debug"), // Default to debug mode
 		},
 	}, nil
 }
