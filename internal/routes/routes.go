@@ -5,7 +5,7 @@ import (
 	"github.com/histopathai/image-catalog-service/internal/handlers"
 )
 
-func SetupRouter(imageHandler *handlers.ImageHandler) *gin.Engine {
+func SetupRouter(imageHandler *handlers.ImageHandler, gcsProxyHandler *handlers.GCSProxyHandler) *gin.Engine {
 	router := gin.Default()
 
 	apiV1 := router.Group("/api/v1")
@@ -14,6 +14,10 @@ func SetupRouter(imageHandler *handlers.ImageHandler) *gin.Engine {
 		apiV1.PUT("/images/:image_id", imageHandler.UpdateImageByID)
 		apiV1.DELETE("/images/:image_id", imageHandler.DeleteImageByID)
 		apiV1.GET("/images", imageHandler.GetImages)
+
+		// 🔥 Wildcard route to proxy all GCS objects
+		apiV1.GET("/proxy/*objectPath", gcsProxyHandler.ProxyObject)
 	}
+
 	return router
 }
