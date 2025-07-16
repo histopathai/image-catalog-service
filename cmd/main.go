@@ -57,8 +57,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	gcsProxyHandler, err := handlers.NewGCSProxyHandler(cfg.ProjectID, cfg.BucketName)
+	if err != nil {
+		slog.Error("Failed to create GCSProxyHandler", "error", err)
+		os.Exit(1)
+	}
+
 	// Initialize Server
-	server := server.NewServer(cfg, imageHandler)
+	server := server.NewServer(cfg, imageHandler, gcsProxyHandler)
 
 	if server == nil {
 		slog.Error("Failed to create Server")
