@@ -21,13 +21,13 @@ type Server struct {
 	config     *config.Config
 }
 
-func NewServer(cfg *config.Config, imageHandler *handlers.ImageHandler) *Server {
+func NewServer(cfg *config.Config, imageHandler *handlers.ImageHandler, gcsProxyHandler *handlers.GCSProxyHandler) *Server {
 
 	if os.Getenv("GIN_MODE") == "release" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	router := routes.SetupRouter(imageHandler)
+	router := routes.SetupRouter(imageHandler, gcsProxyHandler)
 
 	httpServer := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),
