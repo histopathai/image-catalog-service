@@ -2,10 +2,13 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/histopathai/image-catalog-service/config"
 	"github.com/histopathai/image-catalog-service/internal/handlers"
 )
 
-func SetupRouter(imageHandler *handlers.ImageHandler, gcsProxyHandler *handlers.GCSProxyHandler) *gin.Engine {
+func SetupRouter(imageHandler *handlers.ImageHandler, gcsProxyHandler *handlers.GCSProxyHandler, cfg *config.Config) *gin.Engine {
+
+	gin.SetMode(cfg.Server.GINMode)
 	router := gin.Default()
 
 	apiV1 := router.Group("/api/v1")
