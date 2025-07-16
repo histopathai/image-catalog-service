@@ -27,7 +27,7 @@ func NewServer(cfg *config.Config, imageHandler *handlers.ImageHandler, gcsProxy
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	router := routes.SetupRouter(imageHandler, gcsProxyHandler)
+	router := routes.SetupRouter(imageHandler, gcsProxyHandler, cfg)
 
 	httpServer := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),
