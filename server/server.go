@@ -30,7 +30,7 @@ func NewServer(cfg *config.Config, imageHandler *handlers.ImageHandler, gcsProxy
 	router := routes.SetupRouter(imageHandler, gcsProxyHandler, cfg)
 
 	httpServer := &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),
+		Addr:         fmt.Sprintf(":%s", cfg.Server.Port),
 		Handler:      router,
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,
