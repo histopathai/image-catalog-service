@@ -27,12 +27,15 @@ type ServerConfig struct {
 }
 
 func LoadConfig() (*Config, error) {
-	if err := godotenv.Load(); err != nil {
-		log.Fatalf("❌ Failed to load .env file: %v", err)
-	}
 
 	env := os.Getenv("ENV")
+	var PortStr string
+	var ginMode string
 	if env == "LOCAL" {
+		if err := godotenv.Load(); err != nil {
+			log.Fatalf("❌ Failed to load .env file: %v", err)
+		}
+
 		gacPath := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
 		if gacPath == "" {
 			return nil, fmt.Errorf("GOOGLE_APPLICATION_CREDENTIALS environment variable is not set")
@@ -42,6 +45,24 @@ func LoadConfig() (*Config, error) {
 		}
 		os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", gacPath)
 		fmt.Printf("Using local Google Application Credentials: %s\n", gacPath)
+
+		PortStr = getEnvOrDefault("PORT", "3232")
+		ginMode = getEnvOrDefault("GIN_MODE", "debug")
+
+	} else {
+		PortStr = os.Getenv("PORT")
+		ginMode = "release"
+	}
+
+	if PortStr == "" {
+		return nil, fmt.Errorf("PORT environment variable is not set")
+	}
+	Port, err := strconv.Atoi(PortStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid PORT environment variable: %v", err)
+	}
+	if Port <= 0 {
+		return nil, fmt.Errorf("PORT must be a positive integer")
 	}
 
 	readTimeout, _ := time.ParseDuration(getEnvOrDefault("READ_TIMEOUT", "15m"))
@@ -64,12 +85,12 @@ func LoadConfig() (*Config, error) {
 		Region:     region,
 		BucketName: bucketName,
 		Server: ServerConfig{
-			Port:         int(getEnvAsInt("PORT", 8080)),
+			Port:         Port,
 			Environment:  getEnvOrDefault("ENV", "development"),
 			ReadTimeout:  readTimeout,
 			WriteTimeout: writeTimeout,
 			IdleTimeout:  idleTimeout,
-			GINMode:      getEnvOrDefault("GIN_MODE", "debug"), // Default to debug mode
+			GINMode:      ginMode, // Default to debug mode
 		},
 	}, nil
 }
