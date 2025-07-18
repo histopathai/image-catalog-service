@@ -10,7 +10,6 @@ env:
   REGION: ${{ secrets.GCP_REGION }}
   GCS_BUCKET_NAME: ${{ secrets.GCS_BUCKET_NAME }}
   GIN_MODE: release
-  PORT: 8080
 
 jobs:
   build-and-deploy:
