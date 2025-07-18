@@ -25,10 +25,7 @@ type ServerConfig struct {
 }
 
 func LoadConfig() (*Config, error) {
-
 	env := os.Getenv("ENV")
-	var PortStr string
-	var ginMode string
 
 	if env == "LOCAL" {
 		if err := godotenv.Load(); err != nil {
@@ -43,41 +40,40 @@ func LoadConfig() (*Config, error) {
 			return nil, fmt.Errorf("GOOGLE_APPLICATION_CREDENTIALS file does not exist at path: %s", gacPath)
 		}
 		os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", gacPath)
-		fmt.Printf("Using local Google Application Credentials: %s\n", gacPath)
-
-		PortStr = getEnvOrDefault("PORT", "8080")
-		ginMode = getEnvOrDefault("GIN_MODE", "debug")
-
-	} else {
-		PortStr = os.Getenv("PORT")
-		ginMode = "release"
+		fmt.Printf("✅ Using local Google Application Credentials: %s\n", gacPath)
 	}
 
-	if PortStr == "" {
-		return nil, fmt.Errorf("PORT environment variable is not set")
+	port := getEnvOrDefault("PORT", "8080")
+	if port == "" {
+		return nil, fmt.Errorf("PORT is required")
 	}
 
-	readTimeout, _ := time.ParseDuration(getEnvOrDefault("READ_TIMEOUT", "15m"))
-	writeTimeout, _ := time.ParseDuration(getEnvOrDefault("WRITE_TIMEOUT", "60s"))
-	idleTimeout, _ := time.ParseDuration(getEnvOrDefault("IDLE_TIMEOUT", "5m"))
-
-	projectID := getEnvOrDefault("PROJECT_ID", "")
+	projectID := os.Getenv("PROJECT_ID")
 	if projectID == "" {
 		return nil, fmt.Errorf("PROJECT_ID environment variable is not set")
 	}
-	region := getEnvOrDefault("REGION", "")
+
+	region := os.Getenv("REGION")
+	if region == "" {
+		return nil, fmt.Errorf("REGION environment variable is not set")
+	}
 
 	bucketName := os.Getenv("GCS_BUCKET_NAME")
 	if bucketName == "" {
 		return nil, fmt.Errorf("GCS_BUCKET_NAME environment variable is not set")
 	}
 
+	readTimeout, _ := time.ParseDuration(getEnvOrDefault("READ_TIMEOUT", "15m"))
+	writeTimeout, _ := time.ParseDuration(getEnvOrDefault("WRITE_TIMEOUT", "60s"))
+	idleTimeout, _ := time.ParseDuration(getEnvOrDefault("IDLE_TIMEOUT", "5m"))
+	ginMode := getEnvOrDefault("GIN_MODE", "release")
+
 	return &Config{
 		ProjectID:  projectID,
 		Region:     region,
 		BucketName: bucketName,
 		Server: ServerConfig{
-			Port:         PortStr,
+			Port:         port,
 			ReadTimeout:  readTimeout,
 			WriteTimeout: writeTimeout,
 			IdleTimeout:  idleTimeout,
