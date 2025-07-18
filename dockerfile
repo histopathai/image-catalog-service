@@ -9,7 +9,6 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN rm -rf .env
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o image-catalog-service ./cmd/main.go
 
