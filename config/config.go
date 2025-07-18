@@ -48,11 +48,11 @@ func LoadConfig() (*Config, error) {
 	writeTimeout, _ := time.ParseDuration(getEnvOrDefault("WRITE_TIMEOUT", "60s"))
 	idleTimeout, _ := time.ParseDuration(getEnvOrDefault("IDLE_TIMEOUT", "5m"))
 
-	projectID := getEnvOrDefault("GCP_PROJECT_ID", "")
+	projectID := getEnvOrDefault("PROJECT_ID", "")
 	if projectID == "" {
-		return nil, fmt.Errorf("GCP_PROJECT_ID environment variable is not set")
+		return nil, fmt.Errorf("PROJECT_ID environment variable is not set")
 	}
-	region := getEnvOrDefault("GCP_REGION", "")
+	region := getEnvOrDefault("REGION", "")
 
 	bucketName := os.Getenv("GCS_BUCKET_NAME")
 	if bucketName == "" {
