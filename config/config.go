@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -18,12 +17,11 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Port         int
-	Environment  string
+	Port         string
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
 	IdleTimeout  time.Duration
-	GINMode      string // Added GIN_MODE for Gin framework configuration
+	GINMode      string
 }
 
 func LoadConfig() (*Config, error) {
@@ -31,6 +29,7 @@ func LoadConfig() (*Config, error) {
 	env := os.Getenv("ENV")
 	var PortStr string
 	var ginMode string
+
 	if env == "LOCAL" {
 		if err := godotenv.Load(); err != nil {
 			log.Fatalf("❌ Failed to load .env file: %v", err)
@@ -46,7 +45,7 @@ func LoadConfig() (*Config, error) {
 		os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", gacPath)
 		fmt.Printf("Using local Google Application Credentials: %s\n", gacPath)
 
-		PortStr = getEnvOrDefault("PORT", "3232")
+		PortStr = getEnvOrDefault("PORT", "8080")
 		ginMode = getEnvOrDefault("GIN_MODE", "debug")
 
 	} else {
@@ -56,13 +55,6 @@ func LoadConfig() (*Config, error) {
 
 	if PortStr == "" {
 		return nil, fmt.Errorf("PORT environment variable is not set")
-	}
-	Port, err := strconv.Atoi(PortStr)
-	if err != nil {
-		return nil, fmt.Errorf("invalid PORT environment variable: %v", err)
-	}
-	if Port <= 0 {
-		return nil, fmt.Errorf("PORT must be a positive integer")
 	}
 
 	readTimeout, _ := time.ParseDuration(getEnvOrDefault("READ_TIMEOUT", "15m"))
@@ -85,12 +77,11 @@ func LoadConfig() (*Config, error) {
 		Region:     region,
 		BucketName: bucketName,
 		Server: ServerConfig{
-			Port:         Port,
-			Environment:  getEnvOrDefault("ENV", "development"),
+			Port:         PortStr,
 			ReadTimeout:  readTimeout,
 			WriteTimeout: writeTimeout,
 			IdleTimeout:  idleTimeout,
-			GINMode:      ginMode, // Default to debug mode
+			GINMode:      ginMode,
 		},
 	}, nil
 }
@@ -100,17 +91,4 @@ func getEnvOrDefault(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
-}
-
-func getEnvAsInt(key string, defaultValue int64) int64 {
-	valueStr := os.Getenv(key)
-	if valueStr == "" {
-		return defaultValue
-	}
-	value, err := strconv.ParseInt(valueStr, 10, 64)
-	if err != nil {
-		fmt.Printf("Error parsing environment variable %s: %v. Using default value: %d\n", key, err, defaultValue)
-		return defaultValue
-	}
-	return value
 }
