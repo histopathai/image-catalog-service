@@ -1,0 +1,49 @@
+name: Deploy image-catalog-service to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: ${{ secrets.GCP_REGION }}
+  GCS_BUCKET_NAME: ${{ secrets.GCS_BUCKET_NAME }}
+  GIN_MODE: release
+  PORT: 8080
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ env.PROJECT_ID }}
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        export_default_credentials: true
+
+    - name: Configure Docker authentication for Artifact Registry
+      run: |
+        gcloud auth configure-docker ${REGION}-docker.pkg.dev
+
+    - name: Build Docker image
+      run: |
+        docker build -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/histopath-docker-repo/image-catalog-service:latest .
+
+    - name: Push Docker image to Artifact Registry
+      run: |
+        docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/histopath-docker-repo/image-catalog-service:latest
+
+    - name: Deploy to Cloud Run
+      run: |
+        gcloud run deploy image-catalog-service \
+          --image ${REGION}-docker.pkg.dev/${PROJECT_ID}/histopath-docker-repo/image-catalog-service:latest \
+          --region ${REGION} \
+          --platform managed \
+          --allow-unauthenticated \
+          --set-env-vars=GCP_PROJECT_ID=${PROJECT_ID},GCP_REGION=${REGION},GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME }},PORT=3232,ENV=prod,GIN_MODE=release,READ_TIMEOUT=15m,WRITE_TIMEOUT=60s,IDLE_TIMEOUT=5m
