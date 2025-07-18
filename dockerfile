@@ -21,6 +21,4 @@ WORKDIR /app
 
 COPY --from=builder /app/image-catalog-service .
 
-ENV PORT=3232
-
 CMD ["./image-catalog-service"]
